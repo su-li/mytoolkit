@@ -12,6 +12,7 @@
         <module>testlog</module>
         <module>testclassload</module>
         <module>testfastdfspressure</module>
+        <module>testThreadPool</module>
     </modules>
 
 
