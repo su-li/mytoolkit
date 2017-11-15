@@ -23,6 +23,7 @@ public class FastdfsTest {
     static {
 
         try {
+            //
             //初始化配置文件
             ClientGlobal.init(CLIENT_CONFIG_FILE);
             trackerClient = new TrackerClient();
