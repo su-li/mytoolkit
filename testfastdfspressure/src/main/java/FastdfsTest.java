@@ -1,4 +1,3 @@
-package a.b;
 
 import org.csource.common.NameValuePair;
 import org.csource.fastdfs.*;
