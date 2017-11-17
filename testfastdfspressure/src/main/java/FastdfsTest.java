@@ -1,4 +1,3 @@
-package a.b;
 
 import org.csource.common.NameValuePair;
 import org.csource.fastdfs.*;
@@ -10,6 +9,7 @@ import java.sql.Statement;
 import java.util.*;
 
 /**
+ * fastdfs压力测试
  * @author HD
  * @date 2017/11/8
  */
