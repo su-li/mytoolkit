@@ -45,6 +45,7 @@ public class FastdfsTest {
         List<byte[]> list = generateTestData(cellSize, numbers);
 
         long start = System.currentTimeMillis();
+        System.out.println("====================开始上传");
         for (byte[] bytes : list) {
             String[] uploadResults = storageClient.upload_file(bytes, "txt", new NameValuePair[0]);
             String groupName = uploadResults[0];
@@ -69,7 +70,7 @@ public class FastdfsTest {
      * @throws Exception
      */
     public static List<byte[]> generateTestData(int cellSize, int numbers) throws Exception {
-        //生成一个1m的数组
+        //生成一个字节数组
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         for (int i = 0; i < 1024 * cellSize; i++) {
             out.write("1".getBytes());
@@ -77,7 +78,7 @@ public class FastdfsTest {
         byte[] bytes = out.toByteArray();
         out.close();
 
-        //模仿100个1m文件
+        //模仿n个字节数组集
         List<byte[]> list = new ArrayList<>();
         for (int i = 0; i < numbers; i++) {
             list.add(bytes);
