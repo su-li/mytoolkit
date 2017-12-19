@@ -15,7 +15,7 @@
 
 <body>
 <script src="js/jquery-3.2.1.min.js"></script>
-<script src="js/spark-md5.min.js"></script>
+<script src="js/spark-md5.js"></script>
 <script type="text/javascript" color="0,0,255" opacity='0.7' zIndex="-2" count="99"
         src="http://cdn.bootcss.com/canvas-nest.js/1.0.1/canvas-nest.min.js"></script>
 <script>
@@ -30,7 +30,6 @@
                 succeed = 0;
             var shardSize = 10 * 1024 * 1024,    //以2MB为一个分片
                 shardCount = Math.ceil(size / shardSize);  //总片数
-            var generateMD = this.generateMD5(file);
             document.getElementById("progress").max = shardCount;
 
             for (var i = 0; i < shardCount; ++i) {
@@ -45,7 +44,7 @@
                 form.append("name", name);
                 form.append("total", shardCount);  //总片数
                 form.append("index", i + 1);        //当前是第几片
-                form.append("md5", generateMD);        //文件的MD5值
+                // form.append("md5", generateMD);        //文件的MD5值
 
 
                 //Ajax提交
@@ -59,7 +58,7 @@
                     contentType: false,  //很重要，指定为false才能形成正确的Content-Type
                     success: function (data) {
                         var json = eval(data);
-                        alert("===json:fileName=" + json.fileName + ",totalSlice=" + json.totalSlice + ",currentIndex=" + json.currentIndex + ",md5=" + json.md5);
+                        console.log("===json:fileName=" + json.fileName + ",totalSlice=" + json.totalSlice + ",currentIndex=" + json.currentIndex + ",md5=" + json.md5);
                         ++succeed;
                         $("#output").text(succeed + " / " + shardCount);
                         document.getElementById("progress").value = succeed;
@@ -67,47 +66,15 @@
                 });
             }
         },
-        generateMD5: function (file) {
-            var blobSlice = File.prototype.slice || File.prototype.mozSlice || File.prototype.webkitSlice,
-                chunkSize = 2097152, // read in chunks of 2MB
-                chunks = Math.ceil(file.size / chunkSize),
-                currentChunk = 0,
-                spark = new SparkMD5.ArrayBuffer(),
-                frOnload = function (e) {
-                    //  log.innerHTML+="\nread chunk number "+parseInt(currentChunk+1)+" of "+chunks;
-                    spark.append(e.target.result); // append array buffer
-                    currentChunk++;
-                    if (currentChunk < chunks)
-                        loadNext();
-                    else
-                        return spark.end();
-                    log.innerHTML += "\n加载结束 :\n\n计算后的文件md5:\n" + spark.end() + "\n\n现在你可以选择另外一个文件!\n";
-                },
-                frOnerror = function () {
-                    log.innerHTML += "\糟糕，好像哪里错了.";
-                };
-
-            function loadNext() {
-                var fileReader = new FileReader();
-                fileReader.onload = frOnload;
-                fileReader.onerror = frOnerror;
-                var start = currentChunk * chunkSize,
-                    end = ((start + chunkSize) >= file.size) ? file.size : start + chunkSize;
-                fileReader.readAsArrayBuffer(blobSlice.call(file, start, end));
-            };
-
-            loadNext();
-        }
     };
 
     $(function () {
-
         page.init();
-
     });
 
 </script>
 <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
+<pre id=log></pre>
 <div align="center">
     <input type="file" id="file"/>
     <br/><br/><br/>

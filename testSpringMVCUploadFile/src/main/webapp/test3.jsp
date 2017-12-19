@@ -1,39 +1,36 @@
 <%--
   Created by IntelliJ IDEA.
   User: Administrator
-  Date: 2017/12/15
-  Time: 15:04
+  Date: 2017/12/18
+  Time: 15:23
   To change this template use File | Settings | File Templates.
 --%>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <html>
 <head>
-    <title>多个文件上传</title>
+    <title>分片上传加MD5</title>
 </head>
 <script src="js/jquery-3.2.1.min.js"></script>
 <script src="js/spark-md5.js"></script>
+<script type="text/javascript" color="0,0,255" opacity='0.7' zIndex="-2" count="99"
+        src="http://cdn.bootcss.com/canvas-nest.js/1.0.1/canvas-nest.min.js"></script>
 
 <body>
-<script type="text/javascript" color="0,0,255" opacity='0.7' zIndex="-2" count="99"
-        src="js/canvas-nest.min.js"></script>
-
-<div align="center">
-    <input type="file" id="file" multiple="multiple"/>
-    <br/><br/><br/>
-    <button type="button"id="butt">上传</button>
-</div>
-<br/><br/><br/><br/><br/><br/>
-<div id="show"></div>
+<input type="file" id="file">
+<button type="button" id="butt">上传</button>
+<br/><br/><br/>
+<span id="output" style="font-size:12px">等待</span>
+<br/><br/><br/>
+<progress id="progress"></progress>
 </body>
 <script>
-
     var upload = function (file, md5) {
         var name = file.name,        //文件名
             size = file.size,        //总大小
             succeed = 0;
-        var shardSize = 2 * 1024 * 1024,    //以2MB为一个分片
+        var shardSize = 10 * 1024 * 1024,    //以2MB为一个分片
             shardCount = Math.ceil(size / shardSize);  //总片数
-        document.getElementById(name).max = shardCount;
+        document.getElementById("progress").max = shardCount;
 
         for (var i = 0; i < shardCount; ++i) {
             //计算每一片的起始与结束位置
@@ -44,10 +41,11 @@
 
             var form = new FormData();
             form.append("data", file.slice(start, end));  //slice方法用于切出文件的一部分
-            form.append("fileName", name);
+            form.append("name", name);
             form.append("total", shardCount);  //总片数
             form.append("index", i + 1);        //当前是第几片
             form.append("md5", md5);        //文件的MD5值
+
 
             //Ajax提交
 
@@ -60,10 +58,10 @@
                 contentType: false,  //很重要，指定为false才能形成正确的Content-Type
                 success: function (data) {
                     var json = eval(data);
-                    console.log("fileName=" + json.fileName);
-                    var pro = document.getElementById(json.fileName);
-                    pro.value = pro.value + 1;
-                    document.getElementById(json.fileName + "percent").innerText = pro.value + "/" + pro.max;
+                    console.log("===json:fileName=" + json.fileName + ",totalSlice=" + json.totalSlice + ",currentIndex=" + json.currentIndex + ",md5=" + json.md5);
+                    ++succeed;
+                    $("#output").text(succeed + " / " + shardCount);
+                    document.getElementById("progress").value = succeed;
                 }
             });
         }
@@ -72,7 +70,7 @@
         //声明必要的变量
         var fileReader = new FileReader();//box = document.getElementById('box');
         //文件分割方法（注意兼容性）
-      var   blobSlice = File.prototype.mozSlice || File.prototype.webkitSlice || File.prototype.slice,
+        blobSlice = File.prototype.mozSlice || File.prototype.webkitSlice || File.prototype.slice,
             //文件每块分割2M，计算分割详情
             chunkSize = 2097152,
             chunks = Math.ceil(file.size / chunkSize),
@@ -95,7 +93,6 @@
                 var flag = spark.end();
                 console.log("finished loading");
                 console.info("计算的Hash", flag);
-                document.getElementById(file.name + "md5").innerText = "md5值为:" + flag;
                 upload(file, flag)
 
             }
@@ -110,17 +107,10 @@
         }
 
         loadNext();
-    };
+    }
     $("#butt").click(function () {
-        var files = $("#file")[0].files;
-        for (var j = 0; j < files.length; j++) {
-            var file = files[j];
-            $("#show").append("<span>文件名: " + file.name + "</span>&nbsp;&nbsp;&nbsp;" +
-                "<span id=" + file.name + "md5></span>&nbsp;&nbsp;&nbsp;" +
-                "<span id=" + file.name + "percent></span>&nbsp;&nbsp;&nbsp;" +
-                "<progress id=" + file.name + " value=" + 0 + "></progress><br/>");
-            generateMD5(file);
-        }
+        var file = $("#file")[0].files[0]
+        generateMD5(file)
     })
 </script>
 </html>
