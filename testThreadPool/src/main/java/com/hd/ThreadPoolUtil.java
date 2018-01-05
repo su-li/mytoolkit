@@ -63,8 +63,9 @@ public class ThreadPoolUtil {
      */
     public static ThreadPoolUtil init(int corePoolSize) {
 
-        if (threadPool == null)
+        if (threadPool == null) {
             threadPool = new ThreadPoolUtil(corePoolSize);
+        }
         return threadPool;
     }
 

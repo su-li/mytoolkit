@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>计算MD5值</title>
+    <title>计算文件MD5值</title>
 </head>
 
 <script src="js/jquery-3.2.1.min.js"></script>
@@ -14,8 +14,8 @@
     <input id=file type=file placeholder="select a file"/>
 </form>
 <script>
-    var log = document.getElementById("log");
 
+    var log = document.getElementById("log");
     $("#file").change(function () {
         var blobSlice = File.prototype.slice || File.prototype.mozSlice || File.prototype.webkitSlice,
             file = this.files[0],

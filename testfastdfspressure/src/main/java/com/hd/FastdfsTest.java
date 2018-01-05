@@ -1,3 +1,4 @@
+package com.hd;
 
 import org.csource.common.NameValuePair;
 import org.csource.fastdfs.*;
@@ -10,29 +11,12 @@ import java.util.*;
 
 /**
  * fastdfs压力测试
+ *
  * @author HD
  * @date 2017/11/8
  */
 public class FastdfsTest {
-
-    private static TrackerClient trackerClient;
-    private static TrackerServer trackerServer;
-    private static StorageClient storageClient;
-    public static final String CLIENT_CONFIG_FILE = "client.conf";
-
-    static {
-
-        try {
-            //
-            //初始化配置文件
-            ClientGlobal.init(CLIENT_CONFIG_FILE);
-            trackerClient = new TrackerClient();
-            trackerServer = trackerClient.getConnection();
-            storageClient = new StorageClient(trackerServer, null);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
+    static FDConnectionPool fdConnectionPool = FDConnectionPool.init(100);
 
     public static void main(String[] args) throws Exception {
         Scanner scan = new Scanner(System.in);
@@ -47,14 +31,19 @@ public class FastdfsTest {
         long start = System.currentTimeMillis();
         System.out.println("====================开始上传");
         for (byte[] bytes : list) {
+            TrackerServer trackerServer = fdConnectionPool.getConn();
+            StorageClient storageClient = new StorageClient(trackerServer, null);
             String[] uploadResults = storageClient.upload_file(bytes, "txt", new NameValuePair[0]);
             String groupName = uploadResults[0];
             String remoteFileName = uploadResults[1];
             System.out.println(groupName + "/" + remoteFileName);
             paths.put(remoteFileName, groupName);
+            fdConnectionPool.recycle(trackerServer);
         }
         long end = System.currentTimeMillis();
         System.out.println(String.format("============上传使用时间:%s", end - start));
+        TrackerServer trackerServer = fdConnectionPool.getConn();
+        StorageClient storageClient = new StorageClient(trackerServer, null);
         Set<Map.Entry<String, String>> entries = paths.entrySet();
         Iterator<Map.Entry<String, String>> iterator = entries.iterator();
         while (iterator.hasNext()) {
