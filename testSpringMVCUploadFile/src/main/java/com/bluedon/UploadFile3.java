@@ -85,23 +85,44 @@ public class UploadFile3 {
 
         String ip = request.getLocalAddr();
         int port = request.getLocalPort();
+        String fileName = map.get("fileName");
+        String totalMD5 = map.get("totalMD5");
+        int total = Integer.parseInt(map.get("total"));
+        int index = Integer.parseInt(map.get("index"));
+        System.out.println("    =====================  " + index);
+        String md5 = map.get("md5");
+        int uploadTime = Integer.parseInt(map.get("uploadTime"));
 
-        //TODO  去数据库查询MD5
+        // 去redis查询MD5
+        Jedis jedis = JedisUtils.getJedis();
+        boolean exists = jedis.exists(totalMD5);
+        if (exists) {
+            long hlen = jedis.hlen(totalMD5);
+            if (hlen - 1 == total) {
+                //TODO 文件存入数据库
 
-        if (true) {
-            //数据库查询不到MD5 则存入fdfs
-            pool.execute(new Runnable() {
-                @Override
-                public void run() {
-                    handle(deferredResult, file, map, ip, port);
-                }
-            });
+                //TODO 告诉浏览器 上传完成
+            } else {
+
+            }
         } else {
-            //文件相关信息存入数据库;并告诉浏览器进度为100%
-            //TODO
+            //TODO 去数据库查
+            if (true) {
+                //数据库查询不到MD5 则存入fdfs
+                pool.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        handle(deferredResult, file, map, ip, port);
+                    }
+                });
+            } else {
+                //文件相关信息存入数据库;并告诉浏览器进度为100%
+                //TODO
 
-            deferredResult.setResult(map);
+                deferredResult.setResult(map);
+            }
         }
+
         System.out.println("请求释放..............");
         return deferredResult;
     }
@@ -134,6 +155,7 @@ public class UploadFile3 {
                         int hlen = jedis.hlen(fileSliceKey).intValue();
                         if (hlen - 1 == total) {
                             jedis.sadd(MD5S, fileSliceKey);
+
                         }
                         deferredResult.setResult("200");
                         fdConnectionPool.recycle(trackerServer);
@@ -212,6 +234,16 @@ public class UploadFile3 {
                             //若所有分片都已上传完成
                             if (hlen - 1 == total) {
                                 jedis.sadd(MD5S, fileSliceKey);
+                                Set<String> files = jedis.smembers(FILE_LIST);
+                                for (String f : files) {
+                                    if (f.contains(fileSliceKey)) {
+                                        //TODO 存入数据库
+
+                                        //并从Redis清理掉
+                                        jedis.srem(FILE_LIST, f);
+                                    }
+                                }
+
                             } else {
 
                                 backwardsSlice(fileSliceKey, fileTmp, jedis, index, total);
