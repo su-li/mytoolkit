@@ -14,13 +14,49 @@
 <script src="js/spark-md5.js"></script>
 
 <body>
-<script type="text/javascript" color="0,0,255" opacity='0.7' zIndex="-2" count="99"
-        src="js/canvas-nest.min.js"></script>
-
 <script>
 
     var upload = function (file, md5, uploadTime, map) {
-        map.forEach(function (value, key, map) {
+        var p = 0;
+        for (var key in map) {
+            var current = map[key];
+            document.getElementById(file.name).max = map.length;
+            //构造一个表单，FormData是HTML5新增的
+            var form = new FormData();
+            form.append("data", file.slice(current.start, current.end));  //slice方法用于切出文件的一部分
+            form.append("fileName", file.name);
+            form.append("totalMD5", md5);
+            form.append("total", map.length);  //总片数
+            form.append("index", current.currentChunk);        //当前是第几片
+            form.append("md5", current.md5);        //文件的MD5值
+            form.append("uploadTime", uploadTime);      //文件上传时间
+            //Ajax提交
+            $.ajax({
+                url: "test3/uploadFile",
+                type: "POST",
+                data: form,
+                async: false,        //同步
+                processData: false,  //很重要，告诉jquery不要对form进行处理
+                contentType: false,  //很重要，指定为false才能形成正确的Content-Type
+                success: function (data) {
+                    var json = eval(data);
+                    if (json.p == 1) {
+                        p = 1;
+                        console.log("totalSlice=" + json.total + ",currentIndex=" + json.index);
+                        $("#" + file.name + "percent").text(map.length + " / " + map.length);
+                        document.getElementById(file.name).value = map.length;
+                    } else {
+                        console.log("totalSlice=" + json.total + ",currentIndex=" + json.index);
+                        $("#" + file.name + "percent").text(((document.getElementById(file.name).value) + 1) + " / " + map.length);
+                        document.getElementById(file.name).value = (document.getElementById(file.name).value) + 1;
+                    }
+                }
+            });
+            if (p == 1) {
+                break;
+            }
+        }
+       /* map.forEach(function (value, key, map) {
             document.getElementById(file.name).max = map.size;
 
             //构造一个表单，FormData是HTML5新增的
@@ -42,27 +78,36 @@
                 contentType: false,  //很重要，指定为false才能形成正确的Content-Type
                 success: function (data) {
                     var json = eval(data);
-                    console.log("totalSlice=" + json.total + ",currentIndex=" + json.index);
-                    $("#output").text(json.index + " / " + map.size);
-                    document.getElementById(file.name).value = (document.getElementById(file.name).value) + 1;
+                    if (json.p == 1) {
+                        $("#" + file.name + "percent").text(map.size + " / " + map.size);
+                        document.getElementById(file.name).value = map.size;
+
+                    } else {
+                        console.log("totalSlice=" + json.total + ",currentIndex=" + json.index);
+                        $("#" + file.name + "percent").text(((document.getElementById(file.name).value) + 1) + " / " + map.size);
+                        document.getElementById(file.name).value = (document.getElementById(file.name).value) + 1;
+                    }
                 }
             });
-        })
+        })*/
     };
-    var generateMD5 = function (file, uploadTime) {
-        var map = new Map();
+
+    var params = [];
+
+    var generateMD5 = function (file, uploadTime, deferred, idx) {
+        var map = [];
         //声明必要的变量
-        var fileReader = new FileReader();//box = document.getElementById('box');
+        var fileReader = new FileReader();
         //文件分割方法（注意兼容性）
-        var blobSlice = File.prototype.mozSlice || File.prototype.webkitSlice || File.prototype.slice,
-            //文件每块分割2M，计算分割详情
-            chunkSize = 2 * 1024 * 1024,
-            //总片数
-            chunks = Math.ceil(file.size / chunkSize),
-            //当前片数
-            currentChunk = 0,
-            //创建md5对象（基于SparkMD5）
-            spark = new SparkMD5();
+        var blobSlice = File.prototype.mozSlice || File.prototype.webkitSlice || File.prototype.slice;
+        //文件每块分割2M，计算分割详情
+        var chunkSize = 2 * 1024 * 1024;
+        //总片数
+        var chunks = Math.ceil(file.size / chunkSize);
+        //当前片数
+        var currentChunk = 0;
+        //创建md5对象（基于SparkMD5）
+        var spark = new SparkMD5();
 
         //每块文件读取完毕之后的处理
         fileReader.onload = function (e) {
@@ -74,7 +119,7 @@
 
             var start = currentChunk * chunkSize;
             var end = Math.min(file.size, start + chunkSize);
-            map.set(currentChunk + 1, {"md5": md5Tmp, "start": start, "end": end});
+            map.push({"currentChunk": currentChunk + 1, "md5": md5Tmp, "start": start, "end": end});
 
             //每块交由sparkMD5进行计算
             spark.appendBinary(e.target.result);
@@ -84,14 +129,18 @@
             if (currentChunk < chunks) {
                 loadNext();
             } else {
-                // box.innerText = 'MD5 hash:' + spark.end();
                 var flag = spark.end();
                 console.log("finished loading");
                 console.info("计算的Hash", flag);
                 document.getElementById(file.name + "md5").innerText = "文件MD5值为: " + flag;
-
                 upload(file, flag, uploadTime, map)
-
+                deferred.done(function () {
+                    idx++;
+                    if (idx < params.length) {
+                        generateMD5(params[idx].file, params[idx].uploadTime, params[idx].deferred, idx);
+                    }
+                });
+                deferred.resolve();
             }
         };
 
@@ -99,7 +148,6 @@
         function loadNext() {
             var start = currentChunk * chunkSize,
                 end = start + chunkSize >= file.size ? file.size : start + chunkSize;
-
             fileReader.readAsBinaryString(blobSlice.call(file, start, end));
         }
 
@@ -129,10 +177,26 @@
                     "<button id=" + j + ">排队中..</button></div><br/>"
                 );
             }
-            var uploadTime = parseInt(new Date().getTime() / 1000);
-            generateMD5(file, uploadTime)
+
 
         }
+
+        for (var j = files.length - 1; j >= 0; j--) {
+            var file = files[j];
+            var uploadTime = parseInt(new Date().getTime() + j);
+            var deferred = $.Deferred();
+            params[j] = {file: file, uploadTime: uploadTime, deferred: deferred};
+        }
+
+        generateMD5(params[0].file, params[0].uploadTime, params[0].deferred, 0);
+
+        /*for (var j = 0; j < files.length; j++) {
+            var file = files[j];
+            var uploadTime = parseInt(new Date().getTime());
+            var deferred = $.deferred();
+            generateMD5(file, uploadTime)
+        }*/
+
 
         <!--$("#ff").replaceWith("<input type=\"file\" id=\"ff\" multiple=\"multiple\" onchange=\"listFiles()\"/>")-->
     }

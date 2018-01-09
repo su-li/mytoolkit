@@ -12,30 +12,28 @@
 
 
 <script>
-   /* var map = new Map();
+    var map = new Map();
     map.set("key3", {"md5": 3, "start": 33, "end": 333});
     map.set("key2", {"md5": 2, "start": 22, "end": 222});
     map.set("key1", {"md5": 1, "start": 11, "end": 111});
-    alert(map.size)
-    map.forEach(function (value, key, map) {
-        alert(value.md5);
-        alert(value.start);
-        alert(value.end);
-    })*/
+   // alert(map.size)
+    /* map.forEach(function (value, key, map) {
+         alert(value.md5);
+         alert(value.start);
+         alert(value.end);
+     })*/
 
-
-    var f1 = function (a, b) {
-        return a + b;
-
+    var x = [];
+    x.push({"currentChuck": 1, "md5": 3, "start": 33, "end": 333});
+    x.push({"currentChuck": 2, "md5": 3, "start": 33, "end": 333});
+    x.push({"currentChuck": 3, "md5": 3, "start": 33, "end": 333});
+    for (var key in x) {
+        //console.log(key + " : " + x[key]);
+        console.log(x[key].currentChuck);
+        if (x[key].currentChuck == 1) {
+            break;
+        }
     }
-var f2 =function (c,callback) {
-    console.log("lalalalall")
-    console.log(callback(c,2))
-
-}
-
-f2(2,f1)
-
 </script>
 
 

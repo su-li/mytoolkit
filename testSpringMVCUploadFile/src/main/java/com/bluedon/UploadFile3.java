@@ -17,8 +17,7 @@ import redis.clients.jedis.Jedis;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.util.Map;
 import java.util.Set;
 import java.util.Timer;
@@ -41,36 +40,6 @@ public class UploadFile3 {
     private static final String MD5S = "md5s";
     //文件在redis上的记录key
     private static final String FILE_LIST = "files";
-    //文件的收到片数的在redis上的key
-    private static final String FILE_indexs = "file_indexs";
-
-    private static Timer timer = new Timer(true);
-
-    static {
-        timer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                Jedis jedis = JedisUtils.getJedis();
-                Set<String> md5s = jedis.smembers(MD5S);
-                for (String md5 : md5s) {
-                    Set<String> fi = jedis.smembers(FILE_indexs);
-                    for (String file : fi
-                            ) {
-                        if (file.contains(md5)) {
-                            long indexs = jedis.scard(file);
-
-                            int total = Integer.parseInt(file.substring(file.lastIndexOf("_") + 1));
-                            if (indexs == total) {
-                            }
-
-                        }
-                    }
-
-                }
-                System.out.println("||||||||||||||||||||||||||||||||||||");
-            }
-        }, 1000, 1000);
-    }
 
     @RequestMapping(value = "uploadFile", method = RequestMethod.POST)
     @ResponseBody
@@ -80,31 +49,48 @@ public class UploadFile3 {
 
         //TODO 权限判断
         //TODO 获取到当前用户
+
         System.out.println("请求进入...............");
         DeferredResult<Map<String, String>> deferredResult = new DeferredResult<>();
 
         String ip = request.getLocalAddr();
         int port = request.getLocalPort();
+        String cip = request.getRemoteAddr();
+
         String fileName = map.get("fileName");
         String totalMD5 = map.get("totalMD5");
         int total = Integer.parseInt(map.get("total"));
         int index = Integer.parseInt(map.get("index"));
         System.out.println("    =====================  " + index);
         String md5 = map.get("md5");
-        int uploadTime = Integer.parseInt(map.get("uploadTime"));
+        long uploadTime = Long.parseLong(map.get("uploadTime"));
 
-        // 去redis查询MD5
         Jedis jedis = JedisUtils.getJedis();
-        boolean exists = jedis.exists(totalMD5);
+        String fileKey = cip + "_" + fileName + "_" + totalMD5 + "_" + uploadTime;
+        jedis.sadd(FILE_LIST, fileKey);
+        // 去redis查询MD5
+        Boolean exists = jedis.sismember(MD5S, totalMD5);
         if (exists) {
-            long hlen = jedis.hlen(totalMD5);
-            if (hlen - 1 == total) {
-                //TODO 文件存入数据库
-
-                //TODO 告诉浏览器 上传完成
-            } else {
-
+            //TODO 文件存入数据库 //入库前先查下这个文件是否已经存过,是则不存了
+            try {
+                String uri = jedis.hget(totalMD5, "uri");
+                BufferedWriter writer = new BufferedWriter(new FileWriter("f:/stor", true));
+                writer.append(uri);
+                writer.append("  ");
+                writer.append(fileKey);
+                writer.append("  ");
+                writer.append(totalMD5);
+                writer.newLine();
+                writer.close();
+                jedis.srem(FILE_LIST, fileKey);
+                jedis.close();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
+            //TODO 告诉浏览器 上传完成, 打断剩下的片段上传
+            map.put("p", "1");
+            deferredResult.setResult(map);
+
         } else {
             //TODO 去数据库查
             if (true) {
@@ -112,11 +98,11 @@ public class UploadFile3 {
                 pool.execute(new Runnable() {
                     @Override
                     public void run() {
-                        handle(deferredResult, file, map, ip, port);
+                        handle(deferredResult, file, map, ip, port, cip);
                     }
                 });
             } else {
-                //文件相关信息存入数据库;并告诉浏览器进度为100%
+                //文件相关信息存入数据库;并告诉浏览器进度为100% 打断剩余的上传
                 //TODO
 
                 deferredResult.setResult(map);
@@ -155,6 +141,27 @@ public class UploadFile3 {
                         int hlen = jedis.hlen(fileSliceKey).intValue();
                         if (hlen - 1 == total) {
                             jedis.sadd(MD5S, fileSliceKey);
+                            Set<String> files = jedis.smembers(FILE_LIST);
+                            for (String f : files) {
+                                if (f.contains(fileSliceKey)) {
+                                    //TODO 存入数据库
+                                    try {
+                                        BufferedWriter writer = new BufferedWriter(new FileWriter("f:/stor", true));
+                                        writer.append(hget);
+                                        writer.append("  ");
+                                        writer.append(f);
+                                        writer.append("  ");
+                                        writer.append(fileSliceKey);
+                                        writer.newLine();
+                                        writer.close();
+                                        //并从Redis清理掉
+                                        jedis.srem(FILE_LIST, f);
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                            }
+
 
                         }
                         deferredResult.setResult("200");
@@ -170,27 +177,15 @@ public class UploadFile3 {
         return deferredResult;
     }
 
-    @RequestMapping(value = "monitor/{fileInfo}/{MD5}")
-    public void monitor(HttpServletRequest request,
-                        HttpServletResponse response, @PathVariable("fileInfo") String fileInfo) {
-
-        Jedis jedis = JedisUtils.getJedis();
-        //文件是否存在redis中
-        Boolean exists = jedis.exists(fileInfo);
-
-
-    }
-
-    public void handle(DeferredResult<Map<String, String>> deferredResult, MultipartFile file, Map<String, String> map, String ip, int port) {
+    public void handle(DeferredResult<Map<String, String>> deferredResult, MultipartFile file, Map<String, String> map, String ip, int port, String cip) {
         System.out.println("异步处理请求..........");
 
         String fileName = map.get("fileName");
         String totalMD5 = map.get("totalMD5");
         int total = Integer.parseInt(map.get("total"));
         int index = Integer.parseInt(map.get("index"));
-        System.out.println("    =====================  " + index);
         String md5 = map.get("md5");
-        int uploadTime = Integer.parseInt(map.get("uploadTime"));
+        long uploadTime = Long.parseLong(map.get("uploadTime"));
 
         try {
             //校验文件是否完整
@@ -201,7 +196,7 @@ public class UploadFile3 {
                 StorageClient storageClient = new StorageClient(trackerServer, null);
 
                 //文件key
-                String fileKey = fileName + "_" + totalMD5 + "_" + uploadTime;
+                String fileKey = cip + "_" + fileName + "_" + totalMD5 + "_" + uploadTime;
 
                 //已经完成或正在进行的文件片段的记录在redis上的key
                 String fileSliceKey = totalMD5;
@@ -211,11 +206,8 @@ public class UploadFile3 {
 
                 //文件信息存入redis
                 jedis.hmset(fileKey, map);
-                //设置文件状态为 0正常 1 暂停 2 完成
-                jedis.hsetnx(fileKey, "flag", "0");
-                jedis.hsetnx(fileKey + "_" + total, index + "", "0");
+
                 jedis.sadd(FILE_LIST, fileKey);
-                jedis.sadd(FILE_indexs, fileKey + "_" + total);
 
                 if (index != 1) {
                     //判断 文件此片的上一片是否存在
@@ -238,9 +230,21 @@ public class UploadFile3 {
                                 for (String f : files) {
                                     if (f.contains(fileSliceKey)) {
                                         //TODO 存入数据库
-
-                                        //并从Redis清理掉
-                                        jedis.srem(FILE_LIST, f);
+                                        try {
+                                            BufferedWriter writer = new BufferedWriter(new FileWriter("f:/stor", true));
+                                            writer.append(group_fileRoute);
+                                            writer.append("  ");
+                                            writer.append(f);
+                                            writer.append("  ");
+                                            writer.append(totalMD5);
+                                            writer.newLine();
+                                            writer.close();
+                                            //并从Redis清理掉
+                                            jedis.srem(FILE_LIST, f);
+                                            jedis.del(f);
+                                        } catch (IOException e) {
+                                            e.printStackTrace();
+                                        }
                                     }
                                 }
 
@@ -271,6 +275,27 @@ public class UploadFile3 {
                         //若所有分片都已上传完成
                         if (hlen - 1 == total) {
                             jedis.sadd(MD5S, fileSliceKey);
+                            Set<String> files = jedis.smembers(FILE_LIST);
+                            for (String f : files) {
+                                if (f.contains(fileSliceKey)) {
+                                    //TODO 存入数据库
+                                    try {
+                                        BufferedWriter writer = new BufferedWriter(new FileWriter("f:/stor", true));
+                                        writer.append(group + "/" + fileRoute);
+                                        writer.append("  ");
+                                        writer.append(f);
+                                        writer.append("  ");
+                                        writer.append(totalMD5);
+                                        writer.newLine();
+                                        writer.close();
+                                        //并从Redis清理掉
+                                        jedis.srem(FILE_LIST, f);
+                                        jedis.del(f);
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                            }
                         } else {
 
                             backwardsSlice(fileSliceKey, fileTmp, jedis, index, total);
