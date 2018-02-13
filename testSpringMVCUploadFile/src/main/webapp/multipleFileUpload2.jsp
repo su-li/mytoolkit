@@ -16,9 +16,10 @@
 <body>
 <script>
 
-    var upload = function (file, md5, uploadTime, map) {
+    var upload = function (file, md5, uploadTime, map,idx) {
         var p = 0;
         for (var key in map) {
+            $("#"+idx)
             var current = map[key];
             document.getElementById(file.name).max = map.length;
             //构造一个表单，FormData是HTML5新增的
@@ -57,9 +58,6 @@
             }
         }
     };
-
-    var params = [];
-
     var generateMD5 = function (file, uploadTime, idx) {
         var map = [];
         //声明必要的变量
@@ -99,11 +97,7 @@
                 console.log("finished loading");
                 console.info("计算的Hash", flag);
                 document.getElementById(file.name + "md5").innerText = "文件MD5值为: " + flag;
-                upload(file, flag, uploadTime, map);
-                idx++;
-                if (idx < params.length) {
-                    generateMD5(params[idx].file, params[idx].uploadTime, idx);
-                }
+                upload(file, flag, uploadTime, map, idx);
             }
         };
 
@@ -121,26 +115,22 @@
         for (var j = 0; j < files.length; j++) {
             var file = files[j];
 
-                <!--应该用div来标识比较好,但是不会取特定子元素,先不用-->
-                $("#show").append(
-                    "<div>" +
-                    "<span>文件名: " + file.name + "</span>&nbsp;&nbsp;&nbsp;" +
-                    "<span id=" + file.name + "md5></span>&nbsp;&nbsp;&nbsp;" +
-                    "<span id=" + file.name + "percent></span>&nbsp;&nbsp;&nbsp;" +
-                    "<progress id=" + file.name + " value=0  max =-1></progress>&nbsp;&nbsp;&nbsp;" +
-                    "<button id=" + j + " >排队中..</button></div><br/>"
-                );
-
-
-
+            <!--应该用div来标识比较好,但是不会取特定子元素,先不用-->
+            $("#show").append(
+                "<div>" +
+                "<span>文件名: " + file.name + "</span>&nbsp;&nbsp;&nbsp;" +
+                "<span id=" + file.name + "md5></span>&nbsp;&nbsp;&nbsp;" +
+                "<span id=" + file.name + "percent></span>&nbsp;&nbsp;&nbsp;" +
+                "<progress id=" + file.name + " value=0  max =-1></progress>&nbsp;&nbsp;&nbsp;" +
+                "<button id=" + j + " onchange='UP(j)'>排队中..</button></div><br/>"
+            );
         }
-
-        for (var j = files.length - 1; j >= 0; j--) {
+        var UP = function (j) {
             var file = files[j];
-            var uploadTime = parseInt(new Date().getTime() + j);
-            params[j] = {file: file, uploadTime: uploadTime};
+            var uploadTime = parseInt(new Date().getTime());
+            generateMD5(file, uploadTime, j);
         }
-        generateMD5(params[0].file, params[0].uploadTime, 0);
+        $("#" + j).value = "0";
 
         <!--$("#ff").replaceWith("<input type=\"file\" id=\"ff\" multiple=\"multiple\" onchange=\"listFiles()\"/>")-->
     }

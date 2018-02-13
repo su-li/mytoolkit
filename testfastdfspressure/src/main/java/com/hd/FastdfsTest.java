@@ -1,5 +1,6 @@
 package com.hd;
 
+import org.csource.common.MyException;
 import org.csource.common.NameValuePair;
 import org.csource.fastdfs.*;
 
@@ -16,7 +17,9 @@ import java.util.*;
  * @date 2017/11/8
  */
 public class FastdfsTest {
-    static FDConnectionPool fdConnectionPool = FDConnectionPool.init(100);
+    static int num = 100;
+    static ThreadPoolUtil pool = ThreadPoolUtil.init(num);
+    static FDConnectionPool fdConnectionPool = FDConnectionPool.init(num);
 
     public static void main(String[] args) throws Exception {
         Scanner scan = new Scanner(System.in);
@@ -30,26 +33,48 @@ public class FastdfsTest {
 
         long start = System.currentTimeMillis();
         System.out.println("====================开始上传");
-        for (byte[] bytes : list) {
-            TrackerServer trackerServer = fdConnectionPool.getConn();
-            StorageClient storageClient = new StorageClient(trackerServer, null);
-            String[] uploadResults = storageClient.upload_file(bytes, "txt", new NameValuePair[0]);
-            String groupName = uploadResults[0];
-            String remoteFileName = uploadResults[1];
-            System.out.println(groupName + "/" + remoteFileName);
-            paths.put(remoteFileName, groupName);
-            fdConnectionPool.recycle(trackerServer);
+        int total = list.size() / num;
+        for (int i = 1; i <= num; i++) {
+            int finalI = i;
+            pool.execute(new Thread() {
+                @Override
+                public void run() {
+                    try {
+                       // BufferedWriter writer = new BufferedWriter(new FileWriter("/root/stor/" + finalI, true));
+                        BufferedWriter writer = new BufferedWriter(new FileWriter("F:\\tmp" + finalI, true));
+                        TrackerServer trackerServer = fdConnectionPool.getConn();
+                        StorageClient storageClient = new StorageClient(trackerServer, null);
+                        for (int j = (finalI - 1) * total; j < finalI * total; j++) {
+
+                            byte[] bytes = list.get(j);
+                            String[] uploadResults = storageClient.upload_file(bytes, "txt", new NameValuePair[0]);
+                            String groupName = uploadResults[0];
+                            String remoteFileName = uploadResults[1];
+                            System.out.println(groupName + "/" + remoteFileName);
+                            writer.write(groupName + "/" + remoteFileName);
+                            if (j != ((finalI * total) - 1))
+                                writer.newLine();
+                        }
+                        writer.close();
+                        fdConnectionPool.recycle(trackerServer);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+
+            });
         }
-        long end = System.currentTimeMillis();
-        System.out.println(String.format("============上传使用时间:%s", end - start));
-        TrackerServer trackerServer = fdConnectionPool.getConn();
-        StorageClient storageClient = new StorageClient(trackerServer, null);
-        Set<Map.Entry<String, String>> entries = paths.entrySet();
+        pool.elapsedTime(start);
+
+
+
+       /* Set<Map.Entry<String, String>> entries = paths.entrySet();
         Iterator<Map.Entry<String, String>> iterator = entries.iterator();
         while (iterator.hasNext()) {
             Map.Entry<String, String> next = iterator.next();
             int i = storageClient.delete_file(next.getValue(), next.getKey());
-        }
+        }*/
+
     }
 
     /**

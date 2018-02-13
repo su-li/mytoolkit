@@ -164,6 +164,7 @@ public class ThreadPoolUtil {
     public long elapsedTime(long startTime) throws Exception {
         threadPool.shutdown();
         if (threadPool.awaitTermination()) {
+            System.out.println("总耗时==============" + (System.currentTimeMillis() - startTime));
             return System.currentTimeMillis() - startTime;
         }
         return 0;

@@ -17,6 +17,7 @@
         <module>testServlet</module>
         <module>testSpringMVCUploadFile</module>
         <module>testHTTPClient</module>
+        <module>testWebService</module>
     </modules>
 
 

@@ -13,7 +13,7 @@ public class TestPool {
 
         long startTime = System.currentTimeMillis();
 
-        for (int i = 0; i <= 1000000; i++) {
+        for (int i = 0; i <= 1000; i++) {
             int finalI = i;
             pool.execute(new Thread() {
                 @Override

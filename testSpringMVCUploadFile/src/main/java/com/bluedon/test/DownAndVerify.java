@@ -21,7 +21,7 @@ public class DownAndVerify {
 
         FDConnectionPool fdConnectionPool = FDConnectionPool.init(50);
         Jedis jedis = JedisUtils.getJedis();
-        Set<String> files = jedis.smembers("files");
+        Set<String> files = jedis.smembers("md5s");
         for (String s : files) {
             String code = s;
             String group_Fileroute = jedis.hget(s, "uri");
@@ -34,7 +34,7 @@ public class DownAndVerify {
                 byte[] bytes = storageClient.download_file(group, fileRoute);
                 boolean flag = FileVerifyUtils.md5VerifyByte(bytes, code);
                 System.out.println(flag);
-                storageClient.delete_file(group, fileRoute);
+                //storageClient.delete_file(group, fileRoute);
                 fdConnectionPool.recycle(trackerServer);
             } catch (IOException e) {
                 e.printStackTrace();

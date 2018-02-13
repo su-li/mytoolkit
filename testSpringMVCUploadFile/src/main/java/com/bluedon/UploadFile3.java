@@ -30,15 +30,14 @@ import java.util.TimerTask;
 @Controller
 @RequestMapping(value = "test3/")
 public class UploadFile3 {
-    private ThreadPoolUtil pool = ThreadPoolUtil.init(50);
-    private FDConnectionPool fdConnectionPool = FDConnectionPool.init(50);
 
+    private FDConnectionPool fdConnectionPool = FDConnectionPool.init(50);
 
     //缓存在磁盘的位置
     private static final String DISK_TMP = "f://Tmp//";
-    //已存储完成的文件的MD5值在redis上的key
+    //存储已经完成的文件的MD5值
     private static final String MD5S = "md5s";
-    //文件在redis上的记录key
+    //上传的文件列表
     private static final String FILE_LIST = "files";
 
     @RequestMapping(value = "uploadFile", method = RequestMethod.POST)
@@ -95,12 +94,12 @@ public class UploadFile3 {
             //TODO 去数据库查
             if (true) {
                 //数据库查询不到MD5 则存入fdfs
-                pool.execute(new Runnable() {
+                new Thread() {
                     @Override
                     public void run() {
                         handle(deferredResult, file, map, ip, port, cip);
                     }
-                });
+                }.start();
             } else {
                 //文件相关信息存入数据库;并告诉浏览器进度为100% 打断剩余的上传
                 //TODO
@@ -122,7 +121,7 @@ public class UploadFile3 {
                                              HttpServletResponse response) {
         DeferredResult<String> deferredResult = new DeferredResult<>();
 
-        pool.execute(new Runnable() {
+        new Thread() {
             @Override
             public void run() {
                 Jedis jedis = JedisUtils.getJedis();
@@ -173,7 +172,7 @@ public class UploadFile3 {
                 }
                 jedis.close();
             }
-        });
+        }.start();
         return deferredResult;
     }
 
