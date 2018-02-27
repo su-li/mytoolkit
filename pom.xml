@@ -18,6 +18,7 @@
         <module>testSpringMVCUploadFile</module>
         <module>testHTTPClient</module>
         <module>testWebService</module>
+        <module>testRPC</module>
     </modules>
 
 
