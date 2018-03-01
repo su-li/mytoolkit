@@ -1,5 +1,6 @@
 package com.bluedon;
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -11,11 +12,14 @@ import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.entity.mime.content.StringBody;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
+import org.junit.Test;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -24,15 +28,67 @@ import java.util.Map;
  */
 public class Client {
 
-    public static void main(String[] args) throws Exception {
-        // downLoadFile();
-        createBucket();
+    @Test
+    public void testJson() {
+        class Obj {
+            String name;
+
+            public Obj(String name) {
+                this.name = name;
+            }
+
+            public String getName() {
+                return name;
+            }
+        }
+        List<Obj> list = new ArrayList<>();
+        list.add(new Obj("hello"));
+        list.add(new Obj("hello"));
+        list.add(new Obj("hello"));
+        String hello = JSON.toJSONString(list);
+
+        System.out.println(hello);
     }
 
-    public static void uploadFile(String[] args) throws IOException {
+    public static void main(String[] args) throws Exception {
+        // uploadFile();
+        // downLoadFile();
+        // createBucket();
+        test();
+    }
+
+    public static void test() throws Exception {
+        HttpClient httpclient = null;
+        String url = "http://localhost:8080/bhsys-webapp/oss/outside/test/2";
+        httpclient = HttpClientBuilder.create().build();
+        HttpPost httppost = new HttpPost(url);
+        MultipartEntityBuilder multipartEntityBuilder = MultipartEntityBuilder.create();
+        httppost.setEntity(multipartEntityBuilder.build());
+
+        HttpResponse response = httpclient.execute(httppost);
+        int statusCode = response.getStatusLine().getStatusCode();
+        if (statusCode == HttpStatus.SC_OK) {
+            System.out.println("服务器正常响应.....");
+            HttpEntity resEntity = response.getEntity();
+            //httpclient自带的工具类读取返回数据
+            System.out.println(EntityUtils.toString(resEntity));
+            EntityUtils.consume(resEntity);
+        } else {
+            System.out.println("服务器响应异常.....");
+            HttpEntity resEntity = response.getEntity();
+            //httpclient自带的工具类读取返回数据
+            System.out.println(EntityUtils.toString(resEntity));
+            EntityUtils.consume(resEntity);
+        }
+
+        httpclient.getConnectionManager().shutdown();
+
+    }
+
+    public static void uploadFile() throws IOException {
         HttpClient httpclient = null;
         try {
-            String url = "http://localhost:8080/bhsys-webapp/oss/outside/upload.html";
+            String url = "http://localhost:8080/bhsys-webapp/oss/outside/uploadFile";
             httpclient = HttpClientBuilder.create().build();
             HttpPost httppost = new HttpPost(url);
 
@@ -105,7 +161,6 @@ public class Client {
         httpclient.getConnectionManager().shutdown();
 
     }
-
 
     public static void createBucket() throws Exception {
         HttpClient httpclient = null;
